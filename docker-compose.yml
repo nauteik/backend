@@ -1,0 +1,48 @@
+# docker-compose.yml
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15 # Use a specific version
+    container_name: laptop_ecommerce_db
+    environment:
+      POSTGRES_USER: myuser       # Choose your username
+      POSTGRES_PASSWORD: mysecretpassword # Choose a strong password
+      POSTGRES_DB: laptop_ecommerce # Choose your database name
+    volumes:
+      - postgres_data:/var/lib/postgresql/data # Persist data
+    ports:
+      - "5432:5432" # Map host port 5432 to container port 5432
+    networks:
+      - backend-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U myuser -d laptop_ecommerce"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    container_name: laptop_ecommerce_app
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/laptop_ecommerce
+      - SPRING_DATASOURCE_USERNAME=myuser
+      - SPRING_DATASOURCE_PASSWORD=mysecretpassword
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+    ports:
+      - "8080:8080"
+    volumes:
+      - app_uploads:/app/uploads
+    networks:
+      - backend-network
+
+volumes:
+  postgres_data: # Define the named volume
+  app_uploads:   # Volume for persistent uploads
+
+networks:
+  backend-network:
+    driver: bridge
